@@ -1,0 +1,1 @@
+C:\Users\Stevie\Downloads\StreamSocket sample\C#\testwinphone\testwinphone.csproj;neutral
