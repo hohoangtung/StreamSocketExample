@@ -59,7 +59,7 @@ namespace testwinphone
 
             this.NavigationCacheMode = NavigationCacheMode.Required;
             _availableHostName = new List<HostName>();
-            _streamSocketListener = new StreamSocketListener();
+            //_streamSocketListener = new StreamSocketListener();
 
         }
 
@@ -113,6 +113,8 @@ namespace testwinphone
         {
             try
             {
+                _streamSocketListener = new StreamSocketListener();
+
                 // thêm sự kiện received.
                 // sự kiện sẽ được kích hoạt khi nhận được yêu cầu kết nối từ client. hoặc khi client gửi thông điệp đến server
                 _streamSocketListener.ConnectionReceived += ConnectionReceived;
@@ -160,10 +162,40 @@ namespace testwinphone
             }
         }
 
+        private async Task<string> readMessage(IInputStream input)
+        {
+            DataReader datareader = new DataReader(input);
+
+            while (true)
+            {
+                try
+                {
+                    uint size = await datareader.LoadAsync(sizeof(uint));
+                    if (size != sizeof(uint))
+                    {
+                        return String.Empty;
+                    }
+                    uint lenght = datareader.ReadUInt32();
+                    uint exactlylenght = await datareader.LoadAsync(lenght);
+                    if (lenght != exactlylenght)
+                    {
+                        return String.Empty;
+                    }
+                    string msg = datareader.ReadString(exactlylenght);
+                    return msg;
+                }
+                catch (Exception ex)
+                {
+                    this.textboxDebug.Text += ex.Message + "\n";
+                }
+            }
+
+        }
+
         private async void ConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
         {
             // sự kiện được kích hoạt trên một threat khác, không có quyền truy cập trực tiếp đến biến cục bộ của thread hiện tại.
-            // nên thay vì gán như thông thường ta cần dùng dispatcher để gán bằng threadS
+            // nên thay vì gán như thông thường ta cần dùng dispatcher để gán bằng thread
 
             //this.textboxDebug.Text += "Server Received\n"; // => crash
 
@@ -177,31 +209,8 @@ namespace testwinphone
                         _streamsocket = new StreamSocket();
                         await _streamsocket.ConnectAsync(args.Socket.Information.RemoteAddress, _port.ToString());
                     }
-                    while (true)
-                    {
-                        // nếu đã tồn tại một thể hiện của lớp DataReader thì đối tượng đó tự động được giải phóng.
-                        DataReader datareader = new DataReader(args.Socket.InputStream);
-                        try
-                        {
-                            uint size = await datareader.LoadAsync(sizeof(uint));
-                            if (size != sizeof(uint))
-                            {
-                                return;
-                            }
-                            uint lenght = datareader.ReadUInt32();
-                            uint exactlylenght = await datareader.LoadAsync(lenght);
-                            if (lenght != exactlylenght)
-                            {
-                                return;
-                            }
-                            string msg = datareader.ReadString(exactlylenght);
-                            this.textboxDebug.Text += "Receive from " + args.Socket.Information.RemoteAddress + ": " + msg + "\n";
-                        }
-                        catch (Exception ex)
-                        {
-                            this.textboxDebug.Text += ex.Message + "\n";
-                        }
-                    }
+                    var msg = this.readMessage(args.Socket.InputStream);
+                    this.textboxDebug.Text += "Receive from " + args.Socket.Information.RemoteAddress + ": " + msg + "\n";
                 }
                 );
 
@@ -264,7 +273,7 @@ namespace testwinphone
         {
             if (_streamSocketListener != null)
             {
-                _streamSocketListener.ConnectionReceived -= ConnectionReceived;
+                //_streamSocketListener.ConnectionReceived -= ConnectionReceived;
                 _streamSocketListener.Dispose();
                 _streamSocketListener = null;
                 this.textboxDebug.Text += "Connection Closed\n";
