@@ -36,6 +36,7 @@ namespace testwinphone
 {
     public sealed partial class MainPage : Page
     {
+        #region Attribute
         StreamSocket _streamsocket;
 
         // Ứng dụng nào sử dụn listner sẽ đóng vai trò là server. Lắng nghe yêu cầu kết nối từ client
@@ -52,7 +53,9 @@ namespace testwinphone
         // ref: https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
         // tránh sử dụng các port Well-known hoặc các port được sử dụng chính thức bởi các ứng dụng khác
         private const int _port = 23513;                // hardcode
+        #endregion
 
+        #region Contrucstor & OnNgvigatedTo
         public MainPage()
         {
             this.InitializeComponent();
@@ -62,7 +65,23 @@ namespace testwinphone
             //_streamSocketListener = new StreamSocketListener();
 
         }
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            _availableHostName = this.getHostNames().ToList();
 
+            if (_availableHostName.Any())
+            {
+                // để đơn giản ở đây sử dụng IP đầu tiên tìm thấy để tạo kết nối
+                _hostname = _availableHostName.First();     // hardcode. 
+            }
+            else
+            {
+                this.textboxDebug.Text += "No network connected\n";
+            }
+        }
+        #endregion
+
+        #region Private Method
         // lấy danh sách các ip của các mạng mà thiết bị này đang truy cập
         private IReadOnlyList<HostName> getHostNames()
         {
@@ -89,26 +108,9 @@ namespace testwinphone
             }
             return rtvalue;
         }
-        /// <summary>
-        /// Invoked when this page is about to be displayed in a Frame.
-        /// </summary>
-        /// <param name="e">Event data that describes how this page was reached.
-        /// This parameter is typically used to configure the page.</param>
-        protected override void OnNavigatedTo(NavigationEventArgs e)
-        {
-            _availableHostName = this.getHostNames().ToList();
+        #endregion
 
-            if (_availableHostName.Any())
-            {
-                // để đơn giản ở đây sử dụng IP đầu tiên tìm thấy để tạo kết nối
-                _hostname = _availableHostName.First();     // hardcode. 
-            }
-            else
-            {
-                this.textboxDebug.Text += "No network connected\n";
-            }
-        }
-
+        #region Listener
         private async Task startListener(HostName hostname)
         {
             try
@@ -129,7 +131,32 @@ namespace testwinphone
                 this.textboxDebug.Text += ex.Message + "\n";
             }
         }
+        private async void ConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
+        {
+            // sự kiện được kích hoạt trên một threat khác, không có quyền truy cập trực tiếp đến biến cục bộ của thread hiện tại.
+            // nên thay vì gán như thông thường ta cần dùng dispatcher để gán bằng thread
 
+            //this.textboxDebug.Text += "Server Received\n"; // => crash
+
+            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+              async () =>
+              {
+                  textboxDebug.Text += "Server received message from: " + args.Socket.Information.RemoteAddress + "\n";
+
+                  if (_streamsocket == null)
+                  {
+                      _streamsocket = new StreamSocket();
+                      await _streamsocket.ConnectAsync(args.Socket.Information.RemoteAddress, _port.ToString());
+                  }
+                  var msg = await this.readMessage(args.Socket.InputStream);
+                  this.textboxDebug.Text += "Receive from " + args.Socket.Information.RemoteAddress + ": " + msg + "\n";
+              }
+                );
+
+        }
+        #endregion
+
+        #region Read & Send Message
         private async Task sendMessage(string message)
         {
             if (_streamsocket == null)
@@ -166,6 +193,11 @@ namespace testwinphone
         {
             DataReader datareader = new DataReader(input);
 
+            //// thêm ngày 15.
+            //if (datareader.UnconsumedBufferLength == 0)
+            //{
+            //    return String.Empty;
+            //}
             while (true)
             {
                 try
@@ -191,31 +223,9 @@ namespace testwinphone
             }
 
         }
+        #endregion
 
-        private async void ConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
-        {
-            // sự kiện được kích hoạt trên một threat khác, không có quyền truy cập trực tiếp đến biến cục bộ của thread hiện tại.
-            // nên thay vì gán như thông thường ta cần dùng dispatcher để gán bằng thread
-
-            //this.textboxDebug.Text += "Server Received\n"; // => crash
-
-            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
-              async  () =>
-                {
-                    textboxDebug.Text += "Server received message from: " +  args.Socket.Information.RemoteAddress + "\n";
-
-                    if (_streamsocket == null)
-                    {
-                        _streamsocket = new StreamSocket();
-                        await _streamsocket.ConnectAsync(args.Socket.Information.RemoteAddress, _port.ToString());
-                    }
-                    var msg = this.readMessage(args.Socket.InputStream);
-                    this.textboxDebug.Text += "Receive from " + args.Socket.Information.RemoteAddress + ": " + msg + "\n";
-                }
-                );
-
-        }
-
+        #region Click Event
         private async void StartServer_Click(object sender, RoutedEventArgs e)
         {
             if (this._hostname != null)
@@ -234,7 +244,7 @@ namespace testwinphone
         private async void Connect_Click(object sender, RoutedEventArgs e)
         {
             // nếu đóng vai trò là client.
-            // ứng dụng cần kết nối đến servẻ thông qua IP người dùng nhập vào.
+            // ứng dụng cần kết nối đến server thông qua IP người dùng nhập vào.
             string serverip = this.TextBoxIPSERVER.Text;
             HostName hostname = new HostName(serverip);
 
@@ -285,5 +295,7 @@ namespace testwinphone
                 _streamsocket = null;
             }
         }
+        #endregion
+
     }
 }

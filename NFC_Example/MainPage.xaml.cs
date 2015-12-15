@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.ApplicationModel.Core;
 using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -24,6 +25,8 @@ namespace NFC_Example
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        private long messageId = -1;
+        ProximityDevice proximityDevice;
         public MainPage()
         {
             this.InitializeComponent();
@@ -41,7 +44,6 @@ namespace NFC_Example
 
         }
 
-        ProximityDevice proximityDevice;
         private async void StartClick(object sender, RoutedEventArgs e)
         {
             string id = ProximityDevice.GetDeviceSelector();
@@ -78,43 +80,58 @@ namespace NFC_Example
                 proximityDevice.DeviceArrived += DeviceArrived;
                 proximityDevice.DeviceDeparted +=DeviceDeparted;
                 this.OutputString("Tap to connect ready");
+                this.proximityDevice.PublishMessage("Windows.demo", "My name is Tung");
             }
 
         }
 
-        private void DeviceDeparted(ProximityDevice sender)
+        private async void DeviceDeparted(ProximityDevice sender)
         {
-            this.OutputString("Our friend left us");
-            if (messageId != -1)
-	        {
-                this.proximityDevice.StopSubscribingForMessage(messageId);
-		 
-            }
+            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+                () =>
+                {
+                    this.OutputString("Our friend left us");
+                    //if (messageId != -1)
+                    //{
+                    //    this.proximityDevice.StopSubscribingForMessage(messageId);
+
+                    //}
+                });
             //throw new NotImplementedException();
         }
 
-        private long messageId = -1;
-        private void DeviceArrived(ProximityDevice sender)
+
+        private async void DeviceArrived(ProximityDevice sender)
         {
-            this.OutputString("Someone arrive!!!");
-            messageId = this.proximityDevice.SubscribeForMessage("7ungmessage", messageReceivedHandler);
+            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+                () =>
+                {
+                    this.OutputString("Someone arrive!!!");
+                    messageId = this.proximityDevice.SubscribeForMessage("Windows.demo", messageReceivedHandler);
+                });
            // throw new NotImplementedException();
         }
 
-        private void messageReceivedHandler(ProximityDevice sender, ProximityMessage message)
+        private async void messageReceivedHandler(ProximityDevice sender, ProximityMessage message)
         {
-            this.OutputString("We have a letter. Sir!");
-            this.OutputString("Sender is: " + sender.DeviceId);
-            if (message.MessageType == "7ungmessage")
-            {
-                this.OutputString("He said that: " + message.DataAsString);
-            }
+            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+                () =>
+                {
+                    this.OutputString("Message Received");
+                    this.OutputString("Sender is: " + sender.DeviceId);
+                    this.OutputString("He said that: " + message.DataAsString);
+                });
         }
 
         // xuất ra màn hình câu msg
         private void OutputString(string msg)
         {
             this.OutputTextblock.Text += msg + "\n";
+        }
+
+        private void ClearClick(object sender, RoutedEventArgs e)
+        {
+            this.OutputTextblock.Text = String.Empty;
         }
     }
 }

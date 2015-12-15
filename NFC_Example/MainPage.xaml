@@ -11,7 +11,10 @@
     <Grid>
         <StackPanel>
             <Button x:Name="buttonStart" Content="Start" Height="50" Width="300" HorizontalAlignment="Center" Click="StartClick"/>
-            <TextBlock x:Name="OutputTextblock" HorizontalAlignment="Center" FontSize="17" TextWrapping="Wrap"/>
+            <ScrollViewer Height="483" >
+                <TextBlock x:Name="OutputTextblock" HorizontalAlignment="Center" FontSize="17" TextWrapping="Wrap"/>
+            </ScrollViewer>
+            <Button x:Name="buttonClear" Content="Clear Text" Height="50" Width="300" HorizontalAlignment="Center" Click="ClearClick"/>
         </StackPanel>
     </Grid>
 </Page>

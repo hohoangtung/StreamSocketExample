@@ -25,8 +25,9 @@
             <TextBox x:Name="textboxMessage"  HorizontalAlignment="Center" Width ="300"  />
             <Button x:Name="buttonStartSend" HorizontalAlignment="Center" Width ="300" Content="Send Message"  Click="SendMesage_Click"/>
             <Button x:Name="buttonClose" HorizontalAlignment="Center" Width ="300" Content="Close Connection"  Click="CloseConnection_Click"/>
-            <TextBlock x:Name="textboxDebug" HorizontalAlignment="Center" FontSize="17" TextWrapping="Wrap" TextAlignment="Center"/>
-
+            <ScrollViewer Height="212" >
+                <TextBlock x:Name="textboxDebug" HorizontalAlignment="Center" FontSize="17" TextWrapping="Wrap" TextAlignment="Center" />
+            </ScrollViewer>
         </StackPanel>
     </Grid>
 </Page>
